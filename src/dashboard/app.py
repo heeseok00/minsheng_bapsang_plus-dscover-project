@@ -83,9 +83,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ── KAMIS API ─────────────────────────────────────────────────────────────
+# ── 데이터 로드: JSON 파일 우선, 없으면 API 직접 호출 ─────────────────────
+import json
+from pathlib import Path
+
 @st.cache_data(ttl=3600, show_spinner=False)
-def fetch(category, code, kind, rank, start, end):
+def load_json_data():
+    """GitHub Actions가 수집한 JSON 파일 읽기."""
+    p = Path("data/kamis_latest.json")
+    if not p.exists():
+        return None
+    raw = json.loads(p.read_text(encoding="utf-8"))
+    # {name: rows} 딕셔너리로 변환
+    return {item["name"]: item["rows"] for item in raw.get("items", [])}, raw.get("collected_at", "")
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_api(category, code, kind, rank, start, end):
+    """직접 API 호출 (로컬 fallback)."""
     params = dict(
         action="periodProductList", p_cert_key=CERT_KEY, p_cert_id=CERT_ID,
         p_returntype="json", p_productclscode="01",
@@ -150,28 +164,32 @@ W_WOW, W_MOM, W_YOY = 0.35, 0.30, 0.35
 def avg(lst): return sum(lst) / len(lst) if lst else None
 def pct(a, b): return round((a - b) / b * 100, 1) if b else 0
 
-# ── API 연결 진단 ─────────────────────────────────────────────────────────
-def api_test():
-    """단일 품목(배추)으로 API 연결 상태 확인."""
-    rows = fetch("200", "212", "00", "04",
-                 (today - timedelta(days=7)).strftime("%Y-%m-%d"), end_str)
-    return len(rows) > 0, len(rows)
-
 # ── 데이터 수집 ───────────────────────────────────────────────────────────
 with st.spinner("가격 데이터를 불러오는 중입니다..."):
-    ok, cnt = api_test()
-    if not ok:
-        st.error(
-            f"KAMIS API 연결에 실패했습니다. "
-            f"인증키: `{'설정됨' if CERT_KEY else '없음'}` / "
-            f"아이디: `{'설정됨' if CERT_ID else '없음'}`\n\n"
-            "Streamlit Cloud Secrets에 `KAMIS_CERT_KEY`와 `KAMIS_CERT_ID`가 올바르게 입력되어 있는지 확인해 주세요."
-        )
-        st.stop()
+    # JSON 파일 우선 시도
+    json_result = load_json_data()
+    use_json    = json_result is not None
+    json_cache, collected_at = json_result if use_json else ({}, "")
+
+    if not use_json:
+        # JSON 없으면 API 직접 호출 (로컬 환경용)
+        test_rows = fetch_api("200", "212", "00", "04",
+                              (today - timedelta(days=7)).strftime("%Y-%m-%d"), end_str)
+        if not test_rows:
+            st.error(
+                "가격 데이터를 불러올 수 없습니다.\n\n"
+                "GitHub Actions 워크플로우가 아직 실행되지 않았거나, "
+                "API 연결이 차단된 환경입니다.\n\n"
+                "GitHub 저장소 → Actions 탭 → 'KAMIS 가격 데이터 수집' → Run workflow를 실행해 주세요."
+            )
+            st.stop()
 
     data = []
     for item in ITEMS:
-        rows = fetch(item["cat"], item["code"], item["kind"], item["rank"], start_12m, end_str)
+        if use_json:
+            rows = json_cache.get(item["name"], [])
+        else:
+            rows = fetch_api(item["cat"], item["code"], item["kind"], item["rank"], start_12m, end_str)
         if len(rows) < 2:
             continue
         prices = [r["price"] for r in rows]
@@ -201,12 +219,13 @@ ranked = sorted(data, key=lambda x: x["score"])
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ── 헤더 배너 ─────────────────────────────────────────────────────────────
-week_no = today.isocalendar()[1]
+week_no   = today.isocalendar()[1]
+data_date = collected_at if use_json else end_str
 st.markdown(f"""
 <div class="banner">
   <div>
     <p class="banner-title">민생밥상+ 주간 알뜰장보기 {week_no}호</p>
-    <p class="banner-sub">발행일 {end_str} &nbsp;|&nbsp; KAMIS 공공 데이터 기반 &nbsp;|&nbsp; 서울 소매가 기준</p>
+    <p class="banner-sub">데이터 기준일 {data_date} &nbsp;|&nbsp; KAMIS 공공 데이터 기반 &nbsp;|&nbsp; 서울 소매가 기준</p>
   </div>
   <div class="banner-badge">이번 주 저가 품목 {len([d for d in data if d['score']<0])}종</div>
 </div>

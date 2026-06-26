@@ -4,3 +4,4 @@ pyyaml
 pandas
 streamlit
 plotly
+google-generativeai

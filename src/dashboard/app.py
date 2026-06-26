@@ -13,8 +13,9 @@ try:
 except Exception:
     pass
 
-CERT_KEY = (st.secrets.get("KAMIS_CERT_KEY", "") or os.getenv("KAMIS_CERT_KEY", "")).strip()
-CERT_ID  = (st.secrets.get("KAMIS_CERT_ID",  "") or os.getenv("KAMIS_CERT_ID",  "")).strip()
+CERT_KEY   = (st.secrets.get("KAMIS_CERT_KEY",  "") or os.getenv("KAMIS_CERT_KEY",  "")).strip()
+CERT_ID    = (st.secrets.get("KAMIS_CERT_ID",   "") or os.getenv("KAMIS_CERT_ID",   "")).strip()
+GEMINI_KEY = (st.secrets.get("GEMINI_API_KEY",  "") or os.getenv("GEMINI_API_KEY",  "")).strip()
 
 st.set_page_config(page_title="민생밥상+ 스마트 장바구니", page_icon="🥬", layout="wide")
 
@@ -221,7 +222,7 @@ c3.metric("TOP 5 월 절감 예상", f"{saving:,.0f}원")
 c4.metric("데이터 기준일",      end_str)
 
 # ── 탭 구성 ───────────────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs(["종합 추천", "가격 비교표", "가격 추이"])
+tab1, tab2, tab3, tab4 = st.tabs(["종합 추천", "가격 비교표", "가격 추이", "레시피 추천"])
 
 # ════════════════════════ 탭 1: 종합 추천 ════════════════════════════════
 with tab1:
@@ -398,5 +399,81 @@ with tab3:
     sc2.metric("지난달 대비", f"{sel['mom']:+.1f}%",  delta_color="inverse")
     sc3.metric("12개월 평균 대비", f"{sel['yoy']:+.1f}%", delta_color="inverse")
 
+# ════════════════════════ 탭 4: 레시피 추천 ══════════════════════════════
+with tab4:
+    st.markdown('<p class="sec">이번 주 저가 식재료로 만드는 레시피</p>', unsafe_allow_html=True)
+
+    if not GEMINI_KEY:
+        st.warning("Gemini API 키가 설정되지 않았습니다. Streamlit Cloud Secrets에 `GEMINI_API_KEY`를 추가해 주세요.")
+        st.info("키 발급: [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (무료)")
+        st.stop()
+
+    # 저가 식재료 목록 (종합 점수 기준 상위 5종)
+    cheap_items = [d for d in ranked if d["score"] < 0][:5]
+    all_items   = ranked[:5]
+    use_items   = cheap_items if cheap_items else all_items
+
+    ingredient_lines = "\n".join(
+        f"- {d['name']} ({d['unit']}, 현재가 {d['now']:,.0f}원, "
+        f"지난주 대비 {d['wow']:+.1f}%, 지난달 대비 {d['mom']:+.1f}%)"
+        for d in use_items
+    )
+
+    # UI
+    col_l, col_r = st.columns([1, 2])
+    with col_l:
+        st.markdown("**이번 주 저가 식재료**")
+        for d in use_items:
+            arrow = "▼" if d["score"] < 0 else "▲"
+            st.markdown(f"- **{d['name']}** {d['unit']} — {d['now']:,.0f}원 ({arrow} {abs(d['score']):.1f}점)")
+
+        n_recipe  = st.selectbox("레시피 개수", [1, 2, 3], index=1)
+        difficulty = st.selectbox("난이도", ["초보자", "중급", "모두"])
+        target     = st.selectbox("대상", ["1인 가구 / 자취생", "가족", "제한 없음"])
+
+    with col_r:
+        if st.button("레시피 생성하기", type="primary", use_container_width=True):
+            prompt = f"""
+당신은 가정식 요리 전문가입니다. 아래 이번 주 특가 식재료를 활용해 한국인이 즐겨 먹는 실용적인 레시피를 {n_recipe}개 추천해 주세요.
+
+[이번 주 저렴한 식재료]
+{ingredient_lines}
+
+[조건]
+- 난이도: {difficulty}
+- 대상: {target}
+- 재료비 절감이 목적이므로 특가 식재료를 메인으로 활용할 것
+- 각 레시피는 아래 형식으로 작성:
+
+## 레시피명
+**예상 재료비**: 약 OOOO원 (1인분 기준)
+**조리 시간**: OO분
+**주요 재료**: 재료1, 재료2, ...
+
+**만드는 법**
+1. ...
+2. ...
+3. ...
+
+**절약 팁**: ...
+"""
+            with st.spinner("레시피를 생성하는 중입니다..."):
+                try:
+                    import google.generativeai as genai
+                    genai.configure(api_key=GEMINI_KEY)
+                    model    = genai.GenerativeModel("gemini-2.0-flash")
+                    response = model.generate_content(prompt)
+                    st.markdown(response.text)
+                except Exception as e:
+                    st.error(f"레시피 생성 실패: {e}")
+        else:
+            st.info("왼쪽에서 옵션을 선택하고 '레시피 생성하기'를 클릭하세요.")
+            st.markdown("""
+            **이런 레시피를 추천받을 수 있어요**
+            - 이번 주 저렴한 채소로 만드는 된장찌개
+            - 특가 식재료를 활용한 볶음밥
+            - 자취생도 쉽게 만드는 10분 요리
+            """)
+
 st.divider()
-st.caption("데이터 출처: 한국농수산식품유통공사(aT) KAMIS Open API  |  민생밥상+ DScover팀")
+st.caption("데이터 출처: 한국농수산식품유통공사(aT) KAMIS Open API  |  레시피: Google Gemini  |  민생밥상+ DScover팀")

@@ -1,0 +1,19 @@
+﻿COFFEE TOP8 (sales>=500M):
+  명동 남대문 북창동 다동 무교동 관광특구: sales 930eok, 2030 38.8%, weekend 17.8%
+  강남역: sales 550eok, 2030 56.4%, weekend 24.0%
+  여의도역(여의도): sales 548eok, 2030 30.9%, weekend 6.9%
+  시청역_8번: sales 509eok, 2030 27.8%, weekend 6.5%
+  가산디지털단지: sales 487eok, 2030 46.2%, weekend 9.8%
+  홍대입구역(홍대): sales 465eok, 2030 70.0%, weekend 37.4%
+  역삼역: sales 424eok, 2030 41.4%, weekend 12.1%
+  잠실 관광특구: sales 419eok, 2030 48.6%, weekend 37.1%
+KOREAN FOOD high 2030:
+  한아름시장: 75.6%, sales 8eok
+  해방촌 남동측: 71.5%, sales 49eok
+  홍대입구역(홍대): 69.1%, sales 1147eok
+  이태원(이태원역): 66.5%, sales 523eok
+  경의중앙 신촌역: 66.1%, sales 40eok
+Q growth QoQ:
+  20252: +1.1%
+  20253: +2.7%
+  20254: +5.2%

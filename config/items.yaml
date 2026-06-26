@@ -1,0 +1,170 @@
+# KAMIS 품목 목록
+# API #2 periodProductList 파라미터 기준
+# 부류코드: 100=곡류, 200=채소류, 300=과일류, 400=축산물, 500=수산물
+# 등급코드: 04=상품, 05=중품
+
+items:
+  # ── 곡류 ──────────────────────────────────────────
+  - name: 쌀
+    category: "100"
+    item_code: "111"
+    kind_code: "01"          # 일반계
+    rank_code: "04"
+    unit: 20kg
+    monthly_buy_kg: 8
+
+  # ── 채소류 ─────────────────────────────────────────
+  - name: 배추
+    category: "200"
+    item_code: "212"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1포기
+    monthly_buy_unit: 2
+
+  - name: 무
+    category: "200"
+    item_code: "213"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1개
+    monthly_buy_unit: 2
+
+  - name: 양파
+    category: "200"
+    item_code: "215"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1kg
+    monthly_buy_kg: 2
+
+  - name: 대파
+    category: "200"
+    item_code: "216"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1kg
+    monthly_buy_kg: 0.5
+
+  - name: 감자
+    category: "200"
+    item_code: "217"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1kg
+    monthly_buy_kg: 1
+
+  - name: 고구마
+    category: "200"
+    item_code: "218"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1kg
+    monthly_buy_kg: 0.5
+
+  - name: 시금치
+    category: "200"
+    item_code: "231"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1kg
+    monthly_buy_kg: 0.5
+
+  - name: 상추
+    category: "200"
+    item_code: "232"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 100g
+    monthly_buy_unit: 4
+
+  - name: 오이
+    category: "200"
+    item_code: "221"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 10개
+    monthly_buy_unit: 10
+
+  - name: 호박
+    category: "200"
+    item_code: "222"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1개
+    monthly_buy_unit: 4
+
+  # ── 과일류 ─────────────────────────────────────────
+  - name: 사과
+    category: "300"
+    item_code: "311"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 10개
+    monthly_buy_unit: 10
+
+  - name: 배
+    category: "300"
+    item_code: "312"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 10개
+    monthly_buy_unit: 4
+
+  - name: 토마토
+    category: "300"
+    item_code: "321"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1kg
+    monthly_buy_kg: 1
+
+  # ── 축산물 ─────────────────────────────────────────
+  - name: 계란
+    category: "400"
+    item_code: "411"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 30개
+    monthly_buy_unit: 60
+
+  - name: 닭고기
+    category: "400"
+    item_code: "412"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1kg
+    monthly_buy_kg: 1.5
+
+  - name: 돼지고기(삼겹살)
+    category: "400"
+    item_code: "413"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 100g
+    monthly_buy_kg: 2
+
+  # ── 수산물 ─────────────────────────────────────────
+  - name: 고등어
+    category: "500"
+    item_code: "511"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1마리
+    monthly_buy_unit: 2
+
+  - name: 오징어
+    category: "500"
+    item_code: "513"
+    kind_code: "00"
+    rank_code: "04"
+    unit: 1마리
+    monthly_buy_unit: 2
+
+# 지역코드
+regions:
+  서울: "1101"
+  부산: "2100"
+  대구: "2200"
+  전주: "3511"
+  제주: "3911"

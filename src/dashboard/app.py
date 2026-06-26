@@ -536,10 +536,12 @@ with tab4:
 """
             with st.spinner("레시피를 생성하는 중입니다..."):
                 try:
-                    import google.generativeai as genai
-                    genai.configure(api_key=GEMINI_KEY)
-                    model    = genai.GenerativeModel("gemini-1.5-flash")
-                    response = model.generate_content(prompt)
+                    from google import genai as genai_client
+                    client   = genai_client.Client(api_key=GEMINI_KEY)
+                    response = client.models.generate_content(
+                        model="gemini-2.0-flash-lite",
+                        contents=prompt,
+                    )
                     st.markdown(response.text)
                 except Exception as e:
                     st.error(f"레시피 생성 실패: {e}")

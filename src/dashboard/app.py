@@ -385,30 +385,88 @@ with tab3:
     sel_name = st.selectbox("품목 선택", [d["name"] for d in data])
     sel = next(d for d in data if d["name"] == sel_name)
 
-    df_line = pd.DataFrame(sel["rows"]).sort_values("date")
     cutoff  = (today - timedelta(days=90)).strftime("%Y-%m-%d")
-    df_line = df_line[df_line["date"] >= cutoff]
+    df_line = (
+        pd.DataFrame(sel["rows"])
+        .assign(date=lambda d: pd.to_datetime(d["date"]))
+        .query("date >= @cutoff")
+        .groupby("date", as_index=False)["price"].mean()   # 날짜별 평균 집계
+        .sort_values("date")
+    )
+    # 7일 이동평균 (3개 이상 데이터 있을 때만)
+    if len(df_line) >= 7:
+        df_line["ma7"] = df_line["price"].rolling(7, min_periods=1).mean()
+    else:
+        df_line["ma7"] = df_line["price"]
+
+    avg_12m = sel["avg_12m"]
+    now_price = df_line["price"].iloc[-1]
 
     fig_line = go.Figure()
+
+    # 음영 (현재가가 평균 이하면 초록, 이상이면 빨강)
+    fill_color = "rgba(27,94,56,0.08)" if now_price <= avg_12m else "rgba(192,57,43,0.06)"
+    fig_line.add_trace(go.Scatter(
+        x=df_line["date"], y=[avg_12m] * len(df_line),
+        mode="lines", line=dict(width=0), showlegend=False,
+        hoverinfo="skip",
+    ))
     fig_line.add_trace(go.Scatter(
         x=df_line["date"], y=df_line["price"],
-        mode="lines+markers", name="일별 가격",
-        line=dict(color="#1b5e38", width=2),
-        marker=dict(size=4, color="#1b5e38"),
-        hovertemplate="%{x}: %{y:,.0f}원<extra></extra>",
+        mode="none", fill="tonexty",
+        fillcolor=fill_color, showlegend=False,
+        hoverinfo="skip",
     ))
+
+    # 실제 가격 (연한 점선)
+    fig_line.add_trace(go.Scatter(
+        x=df_line["date"], y=df_line["price"],
+        mode="markers",
+        marker=dict(size=4, color="#1b5e38", opacity=0.4),
+        name="일별 가격",
+        hovertemplate="%{x|%m/%d}: %{y:,.0f}원<extra></extra>",
+    ))
+
+    # 7일 이동평균 (굵은 선)
+    fig_line.add_trace(go.Scatter(
+        x=df_line["date"], y=df_line["ma7"],
+        mode="lines",
+        line=dict(color="#1b5e38", width=2.5),
+        name="7일 이동평균",
+        hovertemplate="%{x|%m/%d} 이동평균: %{y:,.0f}원<extra></extra>",
+    ))
+
+    # 12개월 평균선
     fig_line.add_hline(
-        y=sel["avg_12m"], line_dash="dot", line_color="#aaa",
-        annotation_text=f"12개월 평균 {sel['avg_12m']:,.0f}원",
+        y=avg_12m, line_dash="dot", line_color="#aaa", line_width=1.5,
+        annotation_text=f"12개월 평균  {avg_12m:,.0f}원",
         annotation_font_size=11, annotation_position="top left",
+        annotation_font_color="#888",
     )
+
+    # 현재가 마지막 포인트 강조
+    fig_line.add_trace(go.Scatter(
+        x=[df_line["date"].iloc[-1]], y=[now_price],
+        mode="markers+text",
+        marker=dict(size=10, color="#1b5e38", line=dict(color="white", width=2)),
+        text=[f"{now_price:,.0f}원"],
+        textposition="top right",
+        textfont=dict(size=12, color="#1b5e38"),
+        showlegend=False,
+        hoverinfo="skip",
+    ))
+
     fig_line.update_layout(
-        yaxis_title="가격 (원)", xaxis_title=None,
-        height=360, plot_bgcolor="white",
-        yaxis=dict(gridcolor="#f0f0f0"),
-        xaxis=dict(gridcolor="#f0f0f0"),
-        margin=dict(t=20, b=20),
+        yaxis_title="가격 (원)",
+        xaxis_title=None,
+        height=380,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        yaxis=dict(gridcolor="#f5f5f5", tickformat=","),
+        xaxis=dict(gridcolor="#f5f5f5", tickformat="%m/%d"),
+        margin=dict(t=30, b=20, l=60, r=40),
         hovermode="x unified",
+        legend=dict(orientation="h", y=1.08, x=0, font=dict(size=12)),
     )
     st.plotly_chart(fig_line, use_container_width=True)
 

@@ -15,7 +15,7 @@ except Exception:
 
 CERT_KEY   = (st.secrets.get("KAMIS_CERT_KEY",  "") or os.getenv("KAMIS_CERT_KEY",  "")).strip()
 CERT_ID    = (st.secrets.get("KAMIS_CERT_ID",   "") or os.getenv("KAMIS_CERT_ID",   "")).strip()
-GEMINI_KEY = (st.secrets.get("GEMINI_API_KEY",  "") or os.getenv("GEMINI_API_KEY",  "")).strip()
+GROQ_KEY   = (st.secrets.get("GROQ_API_KEY",   "") or os.getenv("GROQ_API_KEY",   "")).strip()
 
 st.set_page_config(page_title="민생밥상+ 스마트 장바구니", page_icon="🥬", layout="wide")
 
@@ -480,9 +480,9 @@ with tab3:
 with tab4:
     st.markdown('<p class="sec">이번 주 저가 식재료로 만드는 레시피</p>', unsafe_allow_html=True)
 
-    if not GEMINI_KEY:
-        st.warning("Gemini API 키가 설정되지 않았습니다. Streamlit Cloud Secrets에 `GEMINI_API_KEY`를 추가해 주세요.")
-        st.info("키 발급: [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey) (무료)")
+    if not GROQ_KEY:
+        st.warning("Groq API 키가 설정되지 않았습니다. Streamlit Cloud Secrets에 `GROQ_API_KEY`를 추가해 주세요.")
+        st.info("키 발급: [console.groq.com](https://console.groq.com) → API Keys → Create API Key (무료)")
         st.stop()
 
     # 저가 식재료 목록 (종합 점수 기준 상위 5종)
@@ -536,13 +536,15 @@ with tab4:
 """
             with st.spinner("레시피를 생성하는 중입니다..."):
                 try:
-                    from google import genai as genai_client
-                    client   = genai_client.Client(api_key=GEMINI_KEY)
-                    response = client.models.generate_content(
-                        model="gemini-2.0-flash-lite",
-                        contents=prompt,
+                    from groq import Groq
+                    client   = Groq(api_key=GROQ_KEY)
+                    chat     = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.7,
+                        max_tokens=1500,
                     )
-                    st.markdown(response.text)
+                    st.markdown(chat.choices[0].message.content)
                 except Exception as e:
                     st.error(f"레시피 생성 실패: {e}")
         else:

@@ -4,4 +4,4 @@ pyyaml
 pandas
 streamlit
 plotly
-google-genai
+groq

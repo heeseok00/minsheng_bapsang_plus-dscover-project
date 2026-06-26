@@ -119,13 +119,25 @@ ITEMS = [
 today      = date.today()
 end_str    = today.strftime("%Y-%m-%d")
 start_12m  = (today - timedelta(days=365)).strftime("%Y-%m-%d")
-# 지난주 월~일 / 이번주 월~일
-this_mon   = today - timedelta(days=today.weekday())
-last_mon   = this_mon - timedelta(days=7)
-last_sun   = this_mon - timedelta(days=1)
+
+# 지난주 / 이번주
+this_mon        = today - timedelta(days=today.weekday())
+last_mon        = this_mon - timedelta(days=7)
+last_sun        = this_mon - timedelta(days=1)
 this_week_start = this_mon.strftime("%Y-%m-%d")
 last_week_start = last_mon.strftime("%Y-%m-%d")
 last_week_end   = last_sun.strftime("%Y-%m-%d")
+
+# 지난달 / 이번달
+this_month_start = today.replace(day=1).strftime("%Y-%m-%d")
+last_month_end   = (today.replace(day=1) - timedelta(days=1))
+last_month_start = last_month_end.replace(day=1).strftime("%Y-%m-%d")
+last_month_end   = last_month_end.strftime("%Y-%m-%d")
+
+# 종합 점수 가중치
+W_WOW = 0.35   # 지난주 대비 (단기 트렌드)
+W_MOM = 0.30   # 지난달 대비 (중기 트렌드)
+W_YOY = 0.35   # 12개월 평균 대비 (장기 기준)
 
 # ── 데이터 수집 ───────────────────────────────────────────────────────────
 with st.spinner("KAMIS 가격 데이터 불러오는 중..."):
@@ -145,13 +157,29 @@ with st.spinner("KAMIS 가격 데이터 불러오는 중..."):
         this_week_avg  = sum(this_week_rows) / len(this_week_rows) if this_week_rows else now_price
         last_week_avg  = sum(last_week_rows) / len(last_week_rows) if last_week_rows else now_price
 
-        wow_pct = round((this_week_avg - last_week_avg) / last_week_avg * 100, 1) if last_week_avg else 0
-        yoy_pct = round((now_price - avg_12m) / avg_12m * 100, 1) if avg_12m else 0
+        # 이번달 / 지난달 평균
+        this_month_rows = [r["price"] for r in rows if r["date"] >= this_month_start]
+        last_month_rows = [r["price"] for r in rows if last_month_start <= r["date"] <= last_month_end]
+        this_month_avg  = sum(this_month_rows) / len(this_month_rows) if this_month_rows else now_price
+        last_month_avg  = sum(last_month_rows) / len(last_month_rows) if last_month_rows else now_price
+
+        wow_pct = round((this_week_avg  - last_week_avg)  / last_week_avg  * 100, 1) if last_week_avg  else 0
+        mom_pct = round((this_month_avg - last_month_avg) / last_month_avg * 100, 1) if last_month_avg else 0
+        yoy_pct = round((now_price      - avg_12m)        / avg_12m        * 100, 1) if avg_12m        else 0
+
+        # 종합 절감 점수: 세 지표의 가중 평균 (음수일수록 더 저렴)
+        score = W_WOW * wow_pct + W_MOM * mom_pct + W_YOY * yoy_pct
+
+        # 지표 일치도: 세 방향이 모두 하락이면 확신도 높음
+        direction_count = sum([wow_pct < 0, mom_pct < 0, yoy_pct < 0])
+        confidence = {3: "높음", 2: "보통", 1: "낮음", 0: "없음"}[direction_count]
 
         data.append({**item,
             "rows": rows, "now": now_price, "avg_12m": avg_12m,
             "this_week": this_week_avg, "last_week": last_week_avg,
-            "wow_pct": wow_pct, "yoy_pct": yoy_pct,
+            "this_month": this_month_avg, "last_month": last_month_avg,
+            "wow_pct": wow_pct, "mom_pct": mom_pct, "yoy_pct": yoy_pct,
+            "score": round(score, 2), "confidence": confidence,
         })
 
 # ── 헤더 ──────────────────────────────────────────────────────────────────
@@ -163,27 +191,34 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── 이번 주 가격 하락 TOP 3 ───────────────────────────────────────────────
-st.markdown('<p class="section-title">📉 이번 주 가격이 낮아졌어요!</p>', unsafe_allow_html=True)
+# ── 종합 추천 TOP 3 ───────────────────────────────────────────────────────
+st.markdown('<p class="section-title">📉 지금 사기 가장 좋은 품목 TOP 3</p>', unsafe_allow_html=True)
+st.caption(f"종합 점수 = 지난주 대비 {int(W_WOW*100)}% + 지난달 대비 {int(W_MOM*100)}% + 12개월 평균 대비 {int(W_YOY*100)}% 가중 합산 · 점수가 낮을수록 더 저렴")
 
-drops = sorted([d for d in data if d["wow_pct"] < 0], key=lambda x: x["wow_pct"])[:3]
+top3 = sorted(data, key=lambda x: x["score"])[:3]
 
-if drops:
+if top3:
     cols = st.columns(3)
-    for col, d in zip(cols, drops):
+    conf_color = {"높음": "#1a6b3c", "보통": "#e07b00", "낮음": "#888", "없음": "#bbb"}
+    for col, d in zip(cols, top3):
         with col:
+            c = conf_color[d["confidence"]]
             st.markdown(f"""
-            <div style="border:1px solid #e0e0e0; border-radius:12px; padding:16px; text-align:center;">
-              <div class="drop-badge">▼ {abs(d['wow_pct'])}%</div>
+            <div style="border:2px solid {c}; border-radius:12px; padding:18px; text-align:center;">
+              <div class="drop-badge">▼ {abs(d['score']):.1f}점</div>
               <div class="item-name">{d['name']} / {d['unit']}</div>
-              <div class="item-price">
-                지난주 <b>{d['last_week']:,.0f}원</b> →
-                이번주 <b style="color:#0068c9">{d['this_week']:,.0f}원</b>
+              <div class="item-price" style="margin-top:8px; line-height:1.8;">
+                지난주 대비 <b class="price-down">{d['wow_pct']:+.1f}%</b><br>
+                지난달 대비 <b class="price-down">{d['mom_pct']:+.1f}%</b><br>
+                12개월 평균 대비 <b class="price-down">{d['yoy_pct']:+.1f}%</b>
+              </div>
+              <div style="margin-top:10px; font-size:12px; color:{c}; font-weight:700;">
+                신뢰도 {d['confidence']}
               </div>
             </div>
             """, unsafe_allow_html=True)
 else:
-    st.info("이번 주 가격 하락 품목 데이터가 없습니다.")
+    st.info("추천 데이터가 없습니다.")
 
 # ── 주요 농축산물 소매가격 표 ─────────────────────────────────────────────
 st.markdown('<p class="section-title">📊 주요 농축산물 소매가격</p>', unsafe_allow_html=True)
@@ -260,14 +295,19 @@ if sel:
     st.plotly_chart(fig, use_container_width=True)
 
 # ── 전체 현황 ─────────────────────────────────────────────────────────────
-with st.expander("전체 품목 현황 보기"):
+with st.expander("전체 품목 종합 순위 보기"):
+    st.caption("종합 점수 기준 오름차순 정렬 (낮을수록 더 저렴)")
     df_all = pd.DataFrame([{
-        "품목": d["name"], "단위": d["unit"],
+        "순위": i+1,
+        "품목": d["name"],
+        "단위": d["unit"],
         "현재가": f"{d['now']:,.0f}원",
         "지난주 대비": f"{'▼' if d['wow_pct']<0 else '▲'} {abs(d['wow_pct'])}%",
+        "지난달 대비": f"{'▼' if d['mom_pct']<0 else '▲'} {abs(d['mom_pct'])}%",
         "12개월 평균 대비": f"{'▼' if d['yoy_pct']<0 else '▲'} {abs(d['yoy_pct'])}%",
-        "상태": "저가" if d["yoy_pct"] < 0 else "고가",
-    } for d in sorted(data, key=lambda x: x["yoy_pct"])])
+        "종합 점수": f"{d['score']:+.1f}",
+        "신뢰도": d["confidence"],
+    } for i, d in enumerate(sorted(data, key=lambda x: x["score"]))])
     st.dataframe(df_all, use_container_width=True, hide_index=True)
 
 st.divider()

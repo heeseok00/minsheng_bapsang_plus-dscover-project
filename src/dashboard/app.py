@@ -149,8 +149,25 @@ W_WOW, W_MOM, W_YOY = 0.35, 0.30, 0.35
 def avg(lst): return sum(lst) / len(lst) if lst else None
 def pct(a, b): return round((a - b) / b * 100, 1) if b else 0
 
+# ── API 연결 진단 ─────────────────────────────────────────────────────────
+def api_test():
+    """단일 품목(배추)으로 API 연결 상태 확인."""
+    rows = fetch("200", "212", "00", "04",
+                 (today - timedelta(days=7)).strftime("%Y-%m-%d"), end_str)
+    return len(rows) > 0, len(rows)
+
 # ── 데이터 수집 ───────────────────────────────────────────────────────────
 with st.spinner("가격 데이터를 불러오는 중입니다..."):
+    ok, cnt = api_test()
+    if not ok:
+        st.error(
+            f"KAMIS API 연결에 실패했습니다. "
+            f"인증키: `{'설정됨' if CERT_KEY else '없음'}` / "
+            f"아이디: `{'설정됨' if CERT_ID else '없음'}`\n\n"
+            "Streamlit Cloud Secrets에 `KAMIS_CERT_KEY`와 `KAMIS_CERT_ID`가 올바르게 입력되어 있는지 확인해 주세요."
+        )
+        st.stop()
+
     data = []
     for item in ITEMS:
         rows = fetch(item["cat"], item["code"], item["kind"], item["rank"], start_12m, end_str)

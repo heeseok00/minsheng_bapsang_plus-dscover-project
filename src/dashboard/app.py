@@ -538,7 +538,7 @@ with tab4:
                 try:
                     import google.generativeai as genai
                     genai.configure(api_key=GEMINI_KEY)
-                    model    = genai.GenerativeModel("gemini-2.0-flash")
+                    model    = genai.GenerativeModel("gemini-1.5-flash")
                     response = model.generate_content(prompt)
                     st.markdown(response.text)
                 except Exception as e:

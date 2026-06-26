@@ -348,7 +348,7 @@ with tab1:
 # ════════════════════════ 탭 2: 가격 비교표 ══════════════════════════════
 with tab2:
     st.markdown('<p class="sec">주요 농축산물 소매가격</p>', unsafe_allow_html=True)
-    st.caption(f"(단위: 원, 상품)   지난주 {last_week_start}~{last_week_end} / 이번주 {this_week_start}~{end_str}")
+    st.caption(f"(단위: 원, 상품)   지난주 {last_week_start} — {last_week_end}  |  이번주 {this_week_start} — {end_str}")
 
     def arrow_str(v):
         return f"▼ {abs(v):.1f}%" if v < 0 else (f"▲ {abs(v):.1f}%" if v > 0 else "-")

@@ -71,7 +71,7 @@ for item in ITEMS:
     if rows:
         output["items"].append({**item, "rows": rows})
 
-out_path = Path("data/kamis_latest.json")
+out_path = Path("Data/kamis_latest.json")
 out_path.parent.mkdir(parents=True, exist_ok=True)
 out_path.write_text(json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8")
 print(f"[collect] 저장 완료: {out_path} ({len(output['items'])}/{len(ITEMS)}종)")

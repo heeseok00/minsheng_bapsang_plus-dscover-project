@@ -90,7 +90,7 @@ from pathlib import Path
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_json_data():
     """GitHub Actions가 수집한 JSON 파일 읽기."""
-    p = Path("data/kamis_latest.json")
+    p = Path("Data/kamis_latest.json")
     if not p.exists():
         return None
     raw = json.loads(p.read_text(encoding="utf-8"))
